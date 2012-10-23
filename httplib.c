@@ -1,50 +1,5 @@
-/* **************************************************************************																					
- *                                OpenPicus                 www.openpicus.com
- *                                                            italian concept
- * 
- *            openSource wireless Platform for sensors and Internet of Things	
- * **************************************************************************
- *  FileName:        httplib.c
- *  Module:          FlyPort WI-FI - FlyPort ETH
- *  Compiler:        Microchip C30 v3.12 or higher
- *
- *  Author               Rev.    Date              Comment
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *  Diego Luca Candido   0.1     20/10/2012	First prototype
- *  
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- *  Software License Agreement
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *  This is free software; you can redistribute it and/or modify it under
- *  the terms of the GNU General Public License (version 2) as published by 
- *  the Free Software Foundation AND MODIFIED BY OpenPicus team.
- *  
- *  ***NOTE*** The exception to the GPL is included to allow you to distribute
- *  a combined work that includes OpenPicus code without being obliged to 
- *  provide the source code for proprietary components outside of the OpenPicus
- *  code. 
- *  OpenPicus software is distributed in the hope that it will be useful, but 
- *  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- *  more details. 
- * 
- * 
- * Warranty
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * THE SOFTWARE AND DOCUMENTATION ARE PROVIDED "AS IS" WITHOUT
- * WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT
- * LIMITATION, ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A
- * PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT SHALL
- * WE ARE LIABLE FOR ANY INCIDENTAL, SPECIAL, INDIRECT OR
- * CONSEQUENTIAL DAMAGES, LOST PROFITS OR LOST DATA, COST OF
- * PROCUREMENT OF SUBSTITUTE GOODS, TECHNOLOGY OR SERVICES, ANY CLAIMS
- * BY THIRD PARTIES (INCLUDING BUT NOT LIMITED TO ANY DEFENSE
- * THEREOF), ANY CLAIMS FOR INDEMNITY OR CONTRIBUTION, OR OTHER
- * SIMILAR COSTS, WHETHER ASSERTED ON THE BASIS OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE), BREACH OF WARRANTY, OR OTHERWISE.
- *
- **************************************************************************/
+// Diego Luca Candido
+
 
 #include "httplib.h"
 
@@ -58,37 +13,61 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 	// for now GET method only
 #ifdef DEBUG
 	UARTWrite(1,"### get_http_request() ###\n");
+	
 #endif
 	int param_size = 0;
 	char* parameters;
 	if(req->parameters_size > 0){
-		if(strcmp(req->method,"GET") == 0){
 			int i;
-			for(i = 0; i < req->parameters_size;++i){
-				param_size += strlen(req->parameters[0]) + strlen(req->parameters[1])+2;
+			for(i = 0; i < req->parameters_size;i+=2){
+				param_size += strlen(req->parameters[i]) + strlen(req->parameters[i+1])+2;
 			}
 		
-			parameters = malloc(sizeof(param_size)*sizeof(char));
+			parameters = malloc(param_size*sizeof(char));
 			memset(parameters,'\0',param_size);
-			for(i = 0; i < req->parameters_size;++i){
-				strcat(parameters,req->parameters[i][0]);
+			for(i = 0; i < req->parameters_size;i+=2){
+				strcat(parameters,req->parameters[i]);
 				strcat(parameters,"=");
-				strcat(parameters,req->parameters[i][1]);
-				strcat(parameters,"&");
+				strcat(parameters,req->parameters[i+1]);
+				if((i+2) != req->parameters_size)
+					strcat(parameters,"&");
 			}	
-		}
-		else{
-		// TO IMPLEMENT	
-		}
-	
 	}
-	char* str_req = (char*)malloc((sizeof(req->method)+sizeof(req->resource)+sizeof(req->version)+sizeof(req->host)+sizeof(param_size)+22)*sizeof(char));
 	
-	if(param_size == 0){
-		sprintf(str_req,"%s %s %s\r\nHost: %s\r\n\r\n",req->method, req->resource,req->version,req->host);
+	
+	char* str_req ;
+	
+	
+	if(strcmp(req->method, "GET") == 0){
+	str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
+	}
+	else if(strcmp(req->method,"POST") == 0){
+	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
+		
 	}
 	else{
-		sprintf(str_req,"%s %s?%s %s\r\nHost: %s\r\n\r\n",req->method, req->resource,parameters,req->version,req->host);
+	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+38)*sizeof(char));
+	
+	}
+	
+	if(param_size == 0){
+		if(strcmp(req->method,"GET") == 0){
+			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\n\r\n",req->method, req->resource,req->version,req->host);
+		}
+		else if(strcmp(req->method,"POST") == 0){
+			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n",req->method, req->resource,req->version,req->host,req->content_type,param_size);
+		
+		}
+	
+	}
+	else{
+		if(strcmp(req->method,"GET") == 0){
+		sprintf(str_req,"%s %s?%s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\n\r\n",req->method, req->resource,parameters,req->version,req->host);
+		}
+		else if(strcmp(req->method,"POST") == 0){
+		sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n%s\r\n",req->method, req->resource,req->version,req->host,req->content_type,param_size,parameters);
+		
+		}
 	}
 	return str_req;
 }
@@ -102,7 +81,7 @@ TCP_SOCKET* create_http_socket(char* host){
 	
 	TCP_SOCKET *socket = (TCP_SOCKET*)malloc(sizeof(TCP_SOCKET));
 	*socket = INVALID_SOCKET;
-#ifndef PORT
+#ifdef PORT
 	*socket = TCPClientOpen(host,PORT);
 #else
 	*socket = TCPClientOpen(host,"80");
@@ -113,11 +92,26 @@ TCP_SOCKET* create_http_socket(char* host){
 		UARTWrite(1,"INVALID\n");
 #endif
 	}
+	
+	int i;
 	while(!TCPisConn(*socket)){
-	vTaskDelay(50);
 #ifdef DEBUG
-	UARTWrite(1,"IS CONNECTING\n");	
+		char mess[20];
+		sprintf(mess,"%d\n",i);
+		UARTWrite(1,mess);
 #endif
+		i+=1;
+#ifdef DEBUG
+		UARTWrite(1,"connecting\n");
+#endif
+		vTaskDelay(10/portTICK_RATE_MS);
+		if(i == 400)
+			break;
+	}
+	
+	if(i == 400){
+		UARTWrite(1,"Exit with error");
+		return NULL;
 	}
 #ifdef DEBUG
 	UARTWrite(1,"CONNECTED\n");
@@ -134,7 +128,6 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 	if(TCPisConn(*socket)){
 		UARTWrite(1,"connected\n");
 		UARTWrite(1,request);
-		UARTWrite(1,"\n");
 	}
 #endif
 	TCPWrite(*socket,request,strlen(request));
@@ -142,11 +135,11 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 #ifdef DEBUG
 		UARTWrite(1,"Socket is connected\n");
 #endif
-		;
+		return 0;
 	}
 	else
 		return -1;
-	return 0;
+	
 }
 
 int do_http_request_header(TCP_SOCKET* socket, struct HTTP_HEADER_REQUEST* request){
@@ -176,7 +169,9 @@ char* http_get_response(TCP_SOCKET* socket){
 		UARTWrite(1,"### http_get_response() ###\n");
 #endif
 	
-	int rxlen;
+	int rxlen,i=0;
+	
+		
 	do{
 	rxlen = TCPRxLen(*socket);
 	vTaskDelay(2);
@@ -184,21 +179,40 @@ char* http_get_response(TCP_SOCKET* socket){
 	char mess[20];
 	sprintf(mess,"TCP RX LEN: %d\n",rxlen);
 	UARTWrite(1,mess);
+	
 #endif	
-	}while(rxlen == 0);
-	
-	
+	vTaskDelay(10/portTICK_RATE_MS);
+
+	}while(rxlen == 0 && i++ != 400);
+#ifdef DEBUG
+	UARTWrite(1,"oh cane nero -1");
+#endif
+
+	if(i == 401)
+		return NULL;
+	#ifdef DEBUG
+	UARTWrite(1,"oh cane nero 1");
+#endif
 	char *buffer = (char*)malloc(sizeof(char)*rxlen);
+
+
+#ifdef DEBUG
+	UARTWrite(1,"oh cane nero 0");
+#endif
 	memset(buffer,'\0',rxlen);
-	
 #ifdef DEBUG
 	if(TCPisConn(*socket)){
 		UARTWrite(1,"connected to read");
 	}
 #endif
 
+#ifdef DEBUG
+	UARTWrite(1,"oh cane nero 2");
+#endif
 	TCPRead(*socket,buffer,rxlen);
-	
+#ifdef DEBUG
+	UARTWrite(1,"oh cane nero 3");
+#endif
 	return buffer;
 	
 }
@@ -219,7 +233,7 @@ void closeSocket(TCP_SOCKET* socket){
 		UARTWrite(1,"### close socket() ###\n");
 #endif
 	
-	TCPClientClose(socket);
+	TCPClientClose(*socket);
 	free(socket);
 }
 
@@ -242,7 +256,12 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	strtok(response,"\r\n");
 		
 	char *buftmp;
-	while(strcmp((buftmp = strtok(NULL,"\n")),"\r") != 0){
+	
+	int i = 0;
+#ifdef DEBUG
+		UARTWrite(1,"i'm here\n");
+#endif
+	while(strcmp((buftmp = strtok(NULL,"\n")),"\r") != 0 && i++ != 10){
 #ifdef DEBUG
 		UARTWrite(1,"current strok: #");
 		UARTWrite(1,buftmp);
@@ -252,7 +271,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 		
 	}
 	char* rest_html = strtok(NULL,"");
-	header_response->response = rest_html;
+	header_response->response_body = rest_html;
 	
 	
 	char* first_match = strtok(response,"\n");
@@ -269,17 +288,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	
 	
 	
-#ifdef DEBUG
-		
-	UARTWrite(1,first_match);
-	UARTWrite(1,"\n");
-	UARTWrite(1,response_first_version);
-	UARTWrite(1,"\n");
-UARTWrite(1,response_first_code);
-	UARTWrite(1,"\n");
-	UARTWrite(1,response_first_status);
-	UARTWrite(1,"\n");
-#endif
+
 	
 //	char* body;
 	
