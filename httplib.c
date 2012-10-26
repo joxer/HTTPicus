@@ -1,6 +1,7 @@
 // Diego Luca Candido
 
 
+
 #include "httplib.h"
 
 #ifndef TASK_FLYPORT_H
@@ -69,6 +70,9 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 		
 		}
 	}
+	
+	free(parameters);
+	
 	return str_req;
 }
 
@@ -87,19 +91,24 @@ TCP_SOCKET* create_http_socket(char* host){
 	*socket = TCPClientOpen(host,"80");
 #endif
 	vTaskDelay(50);
+	int i;
+	
 	while(*socket==INVALID_SOCKET){
+		i+=1;
 #ifdef DEBUG
 		UARTWrite(1,"INVALID\n");
 #endif
+		vTaskDelay(10/portTICK_RATE_MS);
+		if(i==50)
+			break;
+	}
+	if(i == 50){
+		UARTWrite(1,"Exit with error");
+		return NULL;
 	}
 	
-	int i;
 	while(!TCPisConn(*socket)){
-#ifdef DEBUG
-		char mess[20];
-		sprintf(mess,"%d\n",i);
-		UARTWrite(1,mess);
-#endif
+
 		i+=1;
 #ifdef DEBUG
 		UARTWrite(1,"connecting\n");
@@ -184,21 +193,11 @@ char* http_get_response(TCP_SOCKET* socket){
 	vTaskDelay(10/portTICK_RATE_MS);
 
 	}while(rxlen == 0 && i++ != 400);
-#ifdef DEBUG
-	UARTWrite(1,"oh cane nero -1");
-#endif
-
 	if(i == 401)
 		return NULL;
-	#ifdef DEBUG
-	UARTWrite(1,"oh cane nero 1");
-#endif
 	char *buffer = (char*)malloc(sizeof(char)*rxlen);
 
 
-#ifdef DEBUG
-	UARTWrite(1,"oh cane nero 0");
-#endif
 	memset(buffer,'\0',rxlen);
 #ifdef DEBUG
 	if(TCPisConn(*socket)){
@@ -206,13 +205,7 @@ char* http_get_response(TCP_SOCKET* socket){
 	}
 #endif
 
-#ifdef DEBUG
-	UARTWrite(1,"oh cane nero 2");
-#endif
 	TCPRead(*socket,buffer,rxlen);
-#ifdef DEBUG
-	UARTWrite(1,"oh cane nero 3");
-#endif
 	return buffer;
 	
 }
@@ -234,7 +227,9 @@ void closeSocket(TCP_SOCKET* socket){
 #endif
 	
 	TCPClientClose(*socket);
+	vTaskDelay(25);
 	free(socket);
+	vTaskDelay(5);
 }
 
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
@@ -268,7 +263,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 		UARTWrite(1,"#\n");
 		vTaskDelay(5);
 #endif
-		
+		free(buftmp);
 	}
 	char* rest_html = strtok(NULL,"");
 	header_response->response_body = rest_html;
