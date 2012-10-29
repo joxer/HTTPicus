@@ -1,6 +1,6 @@
 // Diego Luca Candido
 
-
+#define PORT "9001"
 
 #include "httplib.h"
 
@@ -85,18 +85,22 @@ TCP_SOCKET* create_http_socket(char* host){
 	
 	TCP_SOCKET *socket = (TCP_SOCKET*)malloc(sizeof(TCP_SOCKET));
 	*socket = INVALID_SOCKET;
+	vTaskDelay(20);
 #ifdef PORT
 	*socket = TCPClientOpen(host,PORT);
 #else
 	*socket = TCPClientOpen(host,"80");
 #endif
 	vTaskDelay(50);
-	int i;
+	int i = 0;
 	
 	while(*socket==INVALID_SOCKET){
 		i+=1;
 #ifdef DEBUG
+		char mess[4];
+		sprintf(mess,"%d\n",i);
 		UARTWrite(1,"INVALID\n");
+		UARTWrite(1,mess);
 #endif
 		vTaskDelay(10/portTICK_RATE_MS);
 		if(i==50)
@@ -104,9 +108,11 @@ TCP_SOCKET* create_http_socket(char* host){
 	}
 	if(i == 50){
 		UARTWrite(1,"Exit with error");
+		closeSocket(socket);
+		
 		return NULL;
 	}
-	
+	i = 0;
 	while(!TCPisConn(*socket)){
 
 		i+=1;
@@ -120,6 +126,7 @@ TCP_SOCKET* create_http_socket(char* host){
 	
 	if(i == 400){
 		UARTWrite(1,"Exit with error");
+		closeSocket(socket);
 		return NULL;
 	}
 #ifdef DEBUG
