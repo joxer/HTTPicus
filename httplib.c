@@ -1,9 +1,6 @@
 // Diego Luca Candido
 
-#define PORT "9001"
-
 #include "httplib.h"
-
 #ifndef TASK_FLYPORT_H
 #include "taskFlyport.h"
 
