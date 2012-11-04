@@ -267,7 +267,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 		UARTWrite(1,"#\n");
 		vTaskDelay(5);
 #endif
-		free(buftmp);
+
 	}
 	char* rest_html = strtok(NULL,"");
 	header_response->response_body = rest_html;
