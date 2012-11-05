@@ -104,7 +104,9 @@ TCP_SOCKET* create_http_socket(char* host){
 			break;
 	}
 	if(i == 50){
+#ifdef DEBUG
 		UARTWrite(1,"Exit with error");
+#endif
 		closeSocket(socket);
 		
 		return NULL;
@@ -144,9 +146,10 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 	}
 #endif
 	TCPWrite(*socket,request,strlen(request));
+	
 	if(TCPisConn(*socket)){
 #ifdef DEBUG
-		UARTWrite(1,"Socket is connected\n");
+		UARTWrite(1,"Socket is connected after write\n");
 #endif
 		return 0;
 	}
@@ -163,9 +166,9 @@ int do_http_request_header(TCP_SOCKET* socket, struct HTTP_HEADER_REQUEST* reque
 	
 	char* sreq = get_http_request(request);
 	
-	TCPWrite(socket,sreq,strlen(sreq)*sizeof(char));
+	TCPWrite(*socket,sreq,strlen(sreq)*sizeof(char));
 	
-	if(TCPisConn(socket)){
+	if(TCPisConn(*socket)){
 #ifdef DEBUG
 		UARTWrite(1,"Socket is connected\n");
 #endif
@@ -257,9 +260,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	char *buftmp;
 	
 	int i = 0;
-#ifdef DEBUG
-		UARTWrite(1,"i'm here\n");
-#endif
+
 	while(strcmp((buftmp = strtok(NULL,"\n")),"\r") != 0 && i++ != 10){
 #ifdef DEBUG
 		UARTWrite(1,"current strok: #");
@@ -279,7 +280,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	header_response->version = response_first_version;
 	
 	char* response_first_code = strtok(NULL," ");
-	header_response->code = response_first_code;
+	header_response->code = *response_first_code;
 	
 	char* response_first_status = strtok(NULL,"");
 	header_response->status = response_first_status;
