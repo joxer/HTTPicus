@@ -31,3 +31,7 @@ char* http_get_response(TCP_SOCKET* );
 char* do_http_request_and_get_response(TCP_SOCKET* , char* );
 void closeSocket(TCP_SOCKET*);
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response);
+char* create_large_post(struct HTTP_HEADER_REQUEST*,int);
+void end_http_post_request(TCP_SOCKET*);
+
+

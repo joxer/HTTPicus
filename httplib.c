@@ -1,5 +1,7 @@
 // Diego Luca Candido
 
+#define DEBUG
+#define PORT "9001"
 #include "httplib.h"
 #ifndef TASK_FLYPORT_H
 #include "taskFlyport.h"
@@ -15,13 +17,19 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 #endif
 	int param_size = 0;
 	char* parameters;
+	
+	
 	if(req->parameters_size > 0){
 			int i;
 			for(i = 0; i < req->parameters_size;i+=2){
 				param_size += strlen(req->parameters[i]) + strlen(req->parameters[i+1])+2;
 			}
 		
-			parameters = malloc(param_size*sizeof(char));
+			parameters = (char*)malloc(param_size*sizeof(char));
+			
+			
+	
+			
 			memset(parameters,'\0',param_size);
 			for(i = 0; i < req->parameters_size;i+=2){
 				strcat(parameters,req->parameters[i]);
@@ -47,6 +55,9 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+38)*sizeof(char));
 	
 	}
+	
+
+	
 	
 	if(param_size == 0){
 		if(strcmp(req->method,"GET") == 0){
@@ -104,9 +115,7 @@ TCP_SOCKET* create_http_socket(char* host){
 			break;
 	}
 	if(i == 50){
-#ifdef DEBUG
 		UARTWrite(1,"Exit with error");
-#endif
 		closeSocket(socket);
 		
 		return NULL;
@@ -137,6 +146,11 @@ TCP_SOCKET* create_http_socket(char* host){
 int do_http_request(TCP_SOCKET* socket,char* request){
 #ifdef DEBUG	
 		UARTWrite(1,"### do_http_request() ###\n");
+		char buff[5];
+		sprintf(buff,"%d",strlen(request));
+		UARTWrite(1,"String is ");
+		UARTWrite(1,buff);
+		UARTWrite(1," characters length\n");
 #endif
 	
 #ifdef DEBUG
@@ -146,10 +160,9 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 	}
 #endif
 	TCPWrite(*socket,request,strlen(request));
-	
 	if(TCPisConn(*socket)){
 #ifdef DEBUG
-		UARTWrite(1,"Socket is connected after write\n");
+		UARTWrite(1,"Socket is connected\n");
 #endif
 		return 0;
 	}
@@ -213,6 +226,7 @@ char* http_get_response(TCP_SOCKET* socket){
 #endif
 
 	TCPRead(*socket,buffer,rxlen);
+	
 	return buffer;
 	
 }
@@ -235,6 +249,7 @@ void closeSocket(TCP_SOCKET* socket){
 	
 	TCPClientClose(*socket);
 	vTaskDelay(25);
+	
 	free(socket);
 	vTaskDelay(5);
 }
@@ -260,7 +275,9 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	char *buftmp;
 	
 	int i = 0;
-
+#ifdef DEBUG
+		UARTWrite(1,"i'm here\n");
+#endif
 	while(strcmp((buftmp = strtok(NULL,"\n")),"\r") != 0 && i++ != 10){
 #ifdef DEBUG
 		UARTWrite(1,"current strok: #");
@@ -268,7 +285,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 		UARTWrite(1,"#\n");
 		vTaskDelay(5);
 #endif
-
+		
 	}
 	char* rest_html = strtok(NULL,"");
 	header_response->response_body = rest_html;
@@ -285,11 +302,7 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	char* response_first_status = strtok(NULL,"");
 	header_response->status = response_first_status;
 	
-	
-	
-	
 
-	
 //	char* body;
 	
 /*	while(strncmp((body = strtok(response,"\n")),"\n",1)!=0){
@@ -300,4 +313,79 @@ struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
 	}*/
 	
 	return header_response;
+}
+
+char* create_large_post(struct HTTP_HEADER_REQUEST* req,int length){
+	
+	// for now GET method only
+#ifdef DEBUG
+	UARTWrite(1,"### create_large_post() ###\n");
+	
+#endif
+	int param_size = 0;
+	char* parameters;
+	
+	
+	if(req->parameters_size > 0){
+			int i;
+			for(i = 0; i < req->parameters_size;i+=2){
+				param_size += strlen(req->parameters[i]) + strlen(req->parameters[i+1])+2;
+			}
+		
+			parameters = (char*)malloc(param_size*sizeof(char));
+			
+			
+	
+			
+			memset(parameters,'\0',param_size);
+			for(i = 0; i < req->parameters_size;i+=2){
+				strcat(parameters,req->parameters[i]);
+				strcat(parameters,"=");
+				strcat(parameters,req->parameters[i+1]);
+				if((i+2) != req->parameters_size)
+					strcat(parameters,"&");
+			}	
+	}
+	
+	
+	char* str_req ;
+	
+	
+	if(strcmp(req->method, "GET") == 0){
+	str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
+	}
+	else if(strcmp(req->method,"POST") == 0){
+	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
+		
+	}
+	else{
+	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+38)*sizeof(char));
+	
+	}
+	
+
+	
+	
+	if(param_size == 0){
+		if(strcmp(req->method,"POST") == 0){
+			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n",req->method, req->resource,req->version,req->host,req->content_type,param_size);
+		
+		}
+	
+	}
+	else{
+		if(strcmp(req->method,"POST") == 0){
+			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n%s",req->method, req->resource,req->version,req->host,req->content_type,length,parameters);
+		}
+	}
+	
+	free(parameters);
+	
+	return str_req;
+}
+
+void end_http_post_request(TCP_SOCKET* socket){
+	
+	do_http_request(socket,"\r\n\r\n");
+	
 }
