@@ -351,32 +351,15 @@ char* create_large_post(struct HTTP_HEADER_REQUEST* req,int length){
 	char* str_req ;
 	
 	
-	if(strcmp(req->method, "GET") == 0){
-	str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
-	}
-	else if(strcmp(req->method,"POST") == 0){
 	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
 		
-	}
-	else{
-	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+38)*sizeof(char));
-	
-	}
-	
-
-	
 	
 	if(param_size == 0){
-		if(strcmp(req->method,"POST") == 0){
-			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n",req->method, req->resource,req->version,req->host,req->content_type,param_size);
+	  sprintf(str_req,"POST %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n", req->resource,req->version,req->host,req->content_type,param_size);
 		
-		}
-	
 	}
 	else{
-		if(strcmp(req->method,"POST") == 0){
-			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n%s",req->method, req->resource,req->version,req->host,req->content_type,length,parameters);
-		}
+	  sprintf(str_req,"POST %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n%s",req->resource,req->version,req->host,req->content_type,length,parameters);
 	}
 	
 	free(parameters);
