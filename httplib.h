@@ -3,6 +3,10 @@
 #define TASK_FLYPORT_H
 #include "taskFlyport.h"
 #endif
+
+#define HEX_STRING( buf, data) \
+sprintf( buf, "%x", data)
+
 struct HTTP_HEADER_REQUEST{
 
   char* method;
@@ -33,5 +37,7 @@ void closeSocket(TCP_SOCKET*);
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response);
 char* create_large_post(struct HTTP_HEADER_REQUEST*,int);
 void end_http_post_request(TCP_SOCKET*);
-
+char* create_chunked_post(struct HTTP_HEADER_REQUEST*);
+char* get_chunked_text(char*);
+void end_chunked_request(TCP_SOCKET*);
 

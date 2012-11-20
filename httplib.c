@@ -1,11 +1,10 @@
 // Diego Luca Candido
 
 #define DEBUG
-#define PORT "9001"
+#define PORT "80"
 #include "httplib.h"
 #ifndef TASK_FLYPORT_H
 #include "taskFlyport.h"
-
 #endif
 
 char* get_http_request(struct HTTP_HEADER_REQUEST* req){
@@ -248,10 +247,9 @@ void closeSocket(TCP_SOCKET* socket){
 #endif
 	
 	TCPClientClose(*socket);
-	vTaskDelay(25);
-	
+	vTaskDelay(30);
 	free(socket);
-	vTaskDelay(5);
+	vTaskDelay(10);
 }
 
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
@@ -372,3 +370,41 @@ void end_http_post_request(TCP_SOCKET* socket){
 	do_http_request(socket,"\r\n\r\n");
 	
 }
+
+char* create_chunked_post(struct HTTP_HEADER_REQUEST* req){
+	
+	// for now GET method only
+#ifdef DEBUG
+	UARTWrite(1,"### create_chuncked_post() ###\n");
+	
+#endif
+		
+	req->version = "HTTP/1.1";
+	char* str_req ;
+	
+	
+	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+38)*sizeof(char));
+		
+	
+	sprintf(str_req,"POST %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nTransfer-Encoding: chunked\r\n\r\n", req->resource,req->version,req->host,req->content_type);
+		
+
+	return str_req;
+	
+}
+
+char* get_chunked_text(char* text){
+	char buffer[5];
+	
+	HEX_STRING(buffer,strlen(text));
+	
+	char *tbuffer = (char*)malloc((5+1+strlen(text))*sizeof(char));
+	sprintf(tbuffer, "%s;\r\n%s\r\n",buffer,text);
+	return tbuffer;	
+}
+
+void end_chunked_request(TCP_SOCKET* socket){
+	
+	do_http_request(socket,"\r\n\r\n");
+}
+
