@@ -1,7 +1,6 @@
 // Diego Luca Candido
 
-#define DEBUG
-#define PORT "9001"
+#define PORT "5000"
 #include "httplib.h"
 #ifndef TASK_FLYPORT_H
 #include "taskFlyport.h"
@@ -27,8 +26,6 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 			parameters = (char*)malloc(param_size*sizeof(char));
 			
 			
-	
-			
 			memset(parameters,'\0',param_size);
 			for(i = 0; i < req->parameters_size;i+=2){
 				strcat(parameters,req->parameters[i]);
@@ -38,7 +35,15 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 					strcat(parameters,"&");
 			}	
 	}
-	
+
+#ifdef DEBUG
+
+char buff[25];
+sprintf(buff,"cont le:%d\n",param_size);
+
+UARTWrite(1,buff);
+
+#endif
 	
 	char* str_req ;
 	
@@ -122,6 +127,27 @@ TCP_SOCKET* create_http_socket(char* host){
 		
 		return NULL;
 	}
+	
+	while(!TCPisConn(*socket)){
+
+		i+=1;
+#ifdef DEBUG
+		UARTWrite(1,"connecting\n");
+#endif
+		vTaskDelay(10/portTICK_RATE_MS);
+		if(i == 400)
+			break;
+	}
+
+	if(i == 400){
+		UARTWrite(1,"Exit with error");
+		closeSocket(socket);
+		return NULL;
+	}
+#ifdef DEBUG
+	UARTWrite(1,"CONNECTED\n");
+#endif
+	
 	return socket;	
 }
 
@@ -140,7 +166,6 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 		UARTWrite(1,"connected\n");
 	}
 #endif
-	
 	TCPWrite(*socket,request,strlen(request));
 	vTaskDelay(10);
 	if(TCPisConn(*socket)){
