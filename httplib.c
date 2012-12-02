@@ -56,13 +56,13 @@ UARTWrite(1,buff);
 		}
 	}
 	if(param_size > 0){
-		param_size = (param_size == 0 ? 1 : (int)(log10(param_size)+1));
+		int tmp_param_size = (param_size == 0 ? 1 : (int)(log10(param_size)+1));
 		if(strcmp(req->method, "GET") == 0){
 			
-			str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+3+34+3+param_size+strlen(parameters))*sizeof(char));
+			str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+3+34+3+tmp_param_size+strlen(parameters))*sizeof(char));
 		}
 		else if(strcmp(req->method,"POST") == 0){
-			str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+strlen(parameters)+param_size+2+34+2+14+18+6)*sizeof(char));
+			str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+strlen(parameters)+tmp_param_size+2+34+2+14+18+6)*sizeof(char));
 		}		
 	}
 	
