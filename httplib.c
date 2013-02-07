@@ -1,6 +1,5 @@
 // Diego Luca Candido
 
-#define PORT "5000"
 #include "httplib.h"
 #ifndef TASK_FLYPORT_H
 #include "taskFlyport.h"
