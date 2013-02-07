@@ -1,8 +1,9 @@
 // Diego Luca Candido
-#ifndef TASK_FLYPORT_H
-#define TASK_FLYPORT_H
-#include "taskFlyport.h"
-#endif
+#include "TCPlib.h"
+
+#define HEX_STRING( buf, data) \
+sprintf( buf, "%x", data)
+
 struct HTTP_HEADER_REQUEST{
 
   char* method;
@@ -29,9 +30,11 @@ int do_http_request(TCP_SOCKET*,char*);
 int do_http_request_header(TCP_SOCKET*, struct HTTP_HEADER_REQUEST*);
 char* http_get_response(TCP_SOCKET* );
 char* do_http_request_and_get_response(TCP_SOCKET* , char* );
-void closeSocket(TCP_SOCKET*);
+void close_socket(TCP_SOCKET*);
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response);
 char* create_large_post(struct HTTP_HEADER_REQUEST*,int);
 void end_http_post_request(TCP_SOCKET*);
-
+char* create_chunked_post(struct HTTP_HEADER_REQUEST*);
+char* get_chunked_text(char*);
+void end_chunked_request(TCP_SOCKET*);
 

@@ -1,12 +1,6 @@
 // Diego Luca Candido
 
-#define DEBUG
-#define PORT "9001"
 #include "httplib.h"
-#ifndef TASK_FLYPORT_H
-#include "taskFlyport.h"
-
-#endif
 
 char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 	
@@ -16,7 +10,7 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 	
 #endif
 	int param_size = 0;
-	char* parameters;
+	char* parameters = NULL;
 	
 	
 	if(req->parameters_size > 0){
@@ -28,8 +22,6 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 			parameters = (char*)malloc(param_size*sizeof(char));
 			
 			
-	
-			
 			memset(parameters,'\0',param_size);
 			for(i = 0; i < req->parameters_size;i+=2){
 				strcat(parameters,req->parameters[i]);
@@ -39,27 +31,42 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 					strcat(parameters,"&");
 			}	
 	}
-	
+
+#ifdef DEBUG
+
+char buff[25];
+sprintf(buff,"cont le:%d\n",param_size);
+
+UARTWrite(1,buff);
+
+#endif
 	
 	char* str_req ;
 	
-	
-	if(strcmp(req->method, "GET") == 0){
-	str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
-	}
-	else if(strcmp(req->method,"POST") == 0){
-	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+param_size+strlen(parameters)+38)*sizeof(char));
-		
-	}
-	else{
-	str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+param_size+38)*sizeof(char));
-	
-	}
-	
-
-	
-	
 	if(param_size == 0){
+		
+		
+		if(strcmp(req->method, "GET") == 0){
+			str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+2+34+4)*sizeof(char));
+		}
+		else if(strcmp(req->method,"POST") == 0){
+			str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+2+34+2+14+18+5)*sizeof(char));
+		}
+	}
+	if(param_size > 0){
+		int tmp_param_size = (param_size == 0 ? 1 : (int)(log10(param_size)+1));
+		if(strcmp(req->method, "GET") == 0){
+			
+			str_req= (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->host)+3+34+3+tmp_param_size+strlen(parameters))*sizeof(char));
+		}
+		else if(strcmp(req->method,"POST") == 0){
+			str_req = (char*)malloc((strlen(req->method)+strlen(req->resource)+strlen(req->version)+strlen(req->content_type)+strlen(req->host)+strlen(parameters)+tmp_param_size+2+34+2+14+18+6)*sizeof(char));
+		}		
+	}
+	
+	if(param_size == 0){ 
+		
+		
 		if(strcmp(req->method,"GET") == 0){
 			sprintf(str_req,"%s %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\n\r\n",req->method, req->resource,req->version,req->host);
 		}
@@ -79,8 +86,9 @@ char* get_http_request(struct HTTP_HEADER_REQUEST* req){
 		}
 	}
 	
-	free(parameters);
-	
+	if(parameters != NULL)
+		free(parameters);
+
 	return str_req;
 }
 
@@ -116,11 +124,11 @@ TCP_SOCKET* create_http_socket(char* host){
 	}
 	if(i == 50){
 		UARTWrite(1,"Exit with error");
-		closeSocket(socket);
+		close_socket(socket);
 		
 		return NULL;
 	}
-	i = 0;
+	
 	while(!TCPisConn(*socket)){
 
 		i+=1;
@@ -131,16 +139,17 @@ TCP_SOCKET* create_http_socket(char* host){
 		if(i == 400)
 			break;
 	}
-	
+
 	if(i == 400){
 		UARTWrite(1,"Exit with error");
-		closeSocket(socket);
+		close_socket(socket);
 		return NULL;
 	}
 #ifdef DEBUG
 	UARTWrite(1,"CONNECTED\n");
 #endif
-	return socket;
+	
+	return socket;	
 }
 
 int do_http_request(TCP_SOCKET* socket,char* request){
@@ -152,14 +161,14 @@ int do_http_request(TCP_SOCKET* socket,char* request){
 		UARTWrite(1,buff);
 		UARTWrite(1," characters length\n");
 #endif
-	
+	vTaskDelay(10);
 #ifdef DEBUG
 	if(TCPisConn(*socket)){
 		UARTWrite(1,"connected\n");
-		UARTWrite(1,request);
 	}
 #endif
 	TCPWrite(*socket,request,strlen(request));
+	vTaskDelay(10);
 	if(TCPisConn(*socket)){
 #ifdef DEBUG
 		UARTWrite(1,"Socket is connected\n");
@@ -179,7 +188,7 @@ int do_http_request_header(TCP_SOCKET* socket, struct HTTP_HEADER_REQUEST* reque
 	
 	char* sreq = get_http_request(request);
 	
-	TCPWrite(*socket,sreq,strlen(sreq)*sizeof(char));
+	TCPWrite(*socket,sreq,strlen(sreq));
 	
 	if(TCPisConn(*socket)){
 #ifdef DEBUG
@@ -204,20 +213,20 @@ char* http_get_response(TCP_SOCKET* socket){
 	do{
 	rxlen = TCPRxLen(*socket);
 	vTaskDelay(2);
+	
 #ifdef DEBUG
 	char mess[20];
 	sprintf(mess,"TCP RX LEN: %d\n",rxlen);
 	UARTWrite(1,mess);
-	
 #endif	
+
 	vTaskDelay(10/portTICK_RATE_MS);
-
 	}while(rxlen == 0 && i++ != 400);
-	if(i == 401)
+	
+	if(i == 401){
 		return NULL;
-	char *buffer = (char*)malloc(sizeof(char)*rxlen);
-
-
+	}
+	char *buffer = (char*)malloc(sizeof(char)*rxlen+1);
 	memset(buffer,'\0',rxlen);
 #ifdef DEBUG
 	if(TCPisConn(*socket)){
@@ -226,7 +235,11 @@ char* http_get_response(TCP_SOCKET* socket){
 #endif
 
 	TCPRead(*socket,buffer,rxlen);
-	
+
+#ifdef DEBUG
+	UARTWrite(1,buffer);
+#endif
+
 	return buffer;
 	
 }
@@ -241,17 +254,16 @@ char* do_http_request_and_get_response(TCP_SOCKET* socket, char* req){
 	return http_get_response(socket);
 }
 
-void closeSocket(TCP_SOCKET* socket){
+void close_socket(TCP_SOCKET* socket){
 
 #ifdef DEBUG
 		UARTWrite(1,"### close socket() ###\n");
 #endif
 	
 	TCPClientClose(*socket);
-	vTaskDelay(25);
-	
+	vTaskDelay(30);
 	free(socket);
-	vTaskDelay(5);
+	vTaskDelay(10);
 }
 
 struct HTTP_HEADER_RESPONSE* get_header_from_response(char* response){
@@ -372,3 +384,48 @@ void end_http_post_request(TCP_SOCKET* socket){
 	do_http_request(socket,"\r\n\r\n");
 	
 }
+
+char* create_chunked_post(struct HTTP_HEADER_REQUEST* req){
+	
+#ifdef DEBUG
+	UARTWrite(1,"### create_chuncked_post() ###\n");
+#endif
+		
+	req->version = "HTTP/1.1";
+	char* str_req ;
+	
+	
+	str_req = (char*)malloc((5+1+2+32+16+32+strlen(req->resource)+strlen(req->version)+strlen(req->host)+strlen(req->content_type))*sizeof(char));
+		
+	
+	sprintf(str_req,"POST %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nTransfer-Encoding: chunked\r\n\r\n", req->resource,req->version,req->host,req->content_type);
+#ifdef DEBUG
+UARTWrite(1,"text:\n");
+UARTWrite(1,str_req);
+#endif
+vTaskDelay(100);
+	return str_req;
+	
+}
+
+char* get_chunked_text(char* text){
+#ifdef DEBUG
+	UARTWrite(1,"### get_chunked_text() ###\n");
+	
+#endif
+
+	char buffer[5];
+	
+	HEX_STRING(buffer,strlen(text));
+	
+	char *tbuffer = (char*)malloc((strlen(buffer)+6+strlen(text)+1)*sizeof(char));
+	snprintf(tbuffer,(strlen(buffer)+6+strlen(text)),"%s;\r\n%s\r\n",buffer,text);
+
+	return tbuffer;	
+}
+
+void end_chunked_request(TCP_SOCKET* socket){
+	
+	do_http_request(socket,"0\r\n\r\n");
+}
+
