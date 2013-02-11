@@ -1,5 +1,4 @@
-// Diego Luca Candido
-
+#include "math.h"
 #include "httplib.h"
 
 char* get_http_request(struct HTTP_HEADER_REQUEST* req){
@@ -155,13 +154,18 @@ TCP_SOCKET* create_http_socket(char* host){
 int do_http_request(TCP_SOCKET* socket,char* request){
 #ifdef DEBUG	
 		UARTWrite(1,"### do_http_request() ###\n");
+		
+		UARTWrite(1,"string:\n");
+		UARTWrite(1,request);
+		UARTWrite(1,"\r\n");
+		vTaskDelay(10);
 		char buff[5];
 		sprintf(buff,"%d",strlen(request));
 		UARTWrite(1,"String is ");
 		UARTWrite(1,buff);
 		UARTWrite(1," characters length\n");
 #endif
-	vTaskDelay(10);
+	
 #ifdef DEBUG
 	if(TCPisConn(*socket)){
 		UARTWrite(1,"connected\n");
@@ -373,8 +377,8 @@ char* create_large_post(struct HTTP_HEADER_REQUEST* req,int length){
 	else{
 	  sprintf(str_req,"POST %s %s\r\nUser-Agent: HTTPicus 1.0\r\nHost: %s\r\nContent-type: %s\r\nContent-Length: %d\r\n\r\n%s",req->resource,req->version,req->host,req->content_type,length,parameters);
 	}
-	
-	free(parameters);
+	if(parameters == NULL)
+		free(parameters);
 	
 	return str_req;
 }
@@ -388,7 +392,7 @@ void end_http_post_request(TCP_SOCKET* socket){
 char* create_chunked_post(struct HTTP_HEADER_REQUEST* req){
 	
 #ifdef DEBUG
-	UARTWrite(1,"### create_chuncked_post() ###\n");
+	UARTWrite(1,"### create_chunked_post() ###\n");
 #endif
 		
 	req->version = "HTTP/1.1";
@@ -403,7 +407,7 @@ char* create_chunked_post(struct HTTP_HEADER_REQUEST* req){
 UARTWrite(1,"text:\n");
 UARTWrite(1,str_req);
 #endif
-vTaskDelay(100);
+	
 	return str_req;
 	
 }
@@ -418,8 +422,8 @@ char* get_chunked_text(char* text){
 	
 	HEX_STRING(buffer,strlen(text));
 	
-	char *tbuffer = (char*)malloc((strlen(buffer)+6+strlen(text)+1)*sizeof(char));
-	snprintf(tbuffer,(strlen(buffer)+6+strlen(text)),"%s;\r\n%s\r\n",buffer,text);
+char *tbuffer = (char*)malloc((strlen(buffer)+15+strlen(text))*sizeof(char));
+	sprintf(tbuffer,"%s;\r\n%s\r\n",buffer,text);
 
 	return tbuffer;	
 }

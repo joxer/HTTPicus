@@ -1,11 +1,8 @@
-// Diego Luca Candido
 #include "TCPlib.h"
-
 #define HEX_STRING( buf, data) \
 sprintf( buf, "%x", data)
 
 struct HTTP_HEADER_REQUEST{
-
   char* method;
   char* resource;
   char* version;
@@ -17,7 +14,6 @@ struct HTTP_HEADER_REQUEST{
 };
 
 struct HTTP_HEADER_RESPONSE{
-	
 	char* version;
 	int code;
 	char* status;
